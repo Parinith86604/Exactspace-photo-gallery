@@ -3,12 +3,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbsUp } from '@fortawesome/free-solid-svg-icons';
 
 /**
- * Individual Photo Card component compliant with original assignment:
+ * Individual Photo Card component:
  * - Single-column horizontal card: thumbnail on LEFT, author and likes on RIGHT.
  * - Uses exact API-provided photo.download_url as image source.
- * - First image loads immediately (eager, fetchPriority="high").
- * - Remaining images use IntersectionObserver with early lead-time (rootMargin: '500px').
- * - Once activated, src is permanently retained and observer is disconnected.
+ * - Eliminates double lazy-load delay: once activated by IntersectionObserver, loading="eager" is set.
+ * - Preloads ~900px before entering viewport for ample lead time during fast scrolls.
+ * - Uses HTMLImageElement.decode() to ensure image bitmap is ready before hiding placeholder.
+ * - Permanently retains src and loaded state when scrolling back up.
  * - Independent like counter starting at 0.
  * - Preserves image dimensions and aspect ratios to prevent layout shifts.
  */
@@ -36,7 +37,7 @@ export const PhotoCard = React.memo(function PhotoCard({
   const containerRef = useRef(null);
   const hasActivatedRef = useRef(shouldLoadImmediately);
 
-  // Controlled early lazy loading using IntersectionObserver
+  // Controlled early lazy loading using IntersectionObserver with 900px lead time
   useEffect(() => {
     if (hasActivatedRef.current) {
       return;
@@ -60,7 +61,7 @@ export const PhotoCard = React.memo(function PhotoCard({
       },
       {
         root: null,
-        rootMargin: '500px', // Pre-fetch 500px before reaching viewport
+        rootMargin: '900px', // Pre-fetch ~900px before reaching viewport
         threshold: 0.01,
       }
     );
@@ -80,24 +81,34 @@ export const PhotoCard = React.memo(function PhotoCard({
     setImgError(true);
   }, []);
 
-  const handleImageLoad = useCallback(() => {
-    setIsImageLoaded(true);
+  // Decode image off main thread with HTMLImageElement.decode() before revealing
+  const handleImageLoad = useCallback((e) => {
+    const imgEl = e?.currentTarget || e?.target;
+    if (imgEl && typeof imgEl.decode === 'function') {
+      imgEl
+        .decode()
+        .then(() => {
+          setIsImageLoaded(true);
+        })
+        .catch(() => {
+          // If decode fails or was interrupted, still display image safely
+          setIsImageLoaded(true);
+        });
+    } else {
+      setIsImageLoaded(true);
+    }
   }, []);
 
   // Use the exact API-provided download_url directly
   const imageSrc = isVisible ? photo.download_url : undefined;
 
-  // Resolve loading attribute:
-  let resolvedLoading = loading;
-  if (shouldLoadImmediately) {
-    resolvedLoading = 'eager';
-  }
+  // Once activated by IntersectionObserver, set native loading to "eager"
+  // to avoid browser double lazy-loading delays.
+  const resolvedLoading = isVisible ? 'eager' : 'lazy';
 
-  // Resolve fetchPriority:
-  let resolvedFetchPriority = fetchPriority;
-  if (isFirst || (isImmediate && fetchPriority === 'high')) {
-    resolvedFetchPriority = 'high';
-  }
+  // High priority reserved exclusively for the first image
+  const isHighPriority = isFirst || (isImmediate && fetchPriority === 'high');
+  const resolvedFetchPriority = isHighPriority ? 'high' : 'auto';
 
   return (
     <article className="photo-card" data-testid={`photo-card-${photo.id}`}>

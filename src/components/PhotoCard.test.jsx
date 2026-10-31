@@ -93,7 +93,7 @@ describe('PhotoCard Component', () => {
     expect(screen.getByText('Image unavailable')).toBeInTheDocument();
   });
 
-  it('loads the first visible image immediately with the exact API download_url', () => {
+  it('loads the first visible image immediately with eager loading and high priority', () => {
     render(<PhotoCard photo={mockPhoto1} isImmediate={true} loading="eager" fetchPriority="high" />);
     const img = screen.getByAltText('Photo by Tina Atmosphere');
 
@@ -104,7 +104,7 @@ describe('PhotoCard Component', () => {
     expect(img).toHaveAttribute('decoding', 'async');
   });
 
-  it('defers below-the-fold images: src unassigned initially until IntersectionObserver activates it', () => {
+  it('defers below-the-fold images and switches to eager loading upon 900px intersection', () => {
     let observerCallback;
     const disconnectSpy = vi.fn();
     const observeSpy = vi.fn();
@@ -112,7 +112,7 @@ describe('PhotoCard Component', () => {
     global.IntersectionObserver = class {
       constructor(callback, options) {
         observerCallback = callback;
-        expect(options.rootMargin).toBe('500px');
+        expect(options.rootMargin).toBe('900px');
       }
       observe(el) {
         observeSpy(el);
@@ -131,13 +131,15 @@ describe('PhotoCard Component', () => {
     expect(observeSpy).toHaveBeenCalledTimes(1);
     expect(typeof observerCallback).toBe('function');
 
-    // 2. Simulate intersection as user scrolls toward card
+    // 2. Simulate intersection as user scrolls toward card (within 900px)
     act(() => {
       observerCallback([{ isIntersecting: true }]);
     });
 
-    // 3. Image receives exact API-provided download_url
+    // 3. Image receives exact API-provided download_url and switches to eager loading (eliminating double lazy-loading)
     expect(img).toHaveAttribute('src', mockPhoto1.download_url);
+    expect(img).toHaveAttribute('loading', 'eager');
+    expect(img).toHaveAttribute('fetchpriority', 'auto');
 
     // 4. Observer is permanently disconnected once activated
     expect(disconnectSpy).toHaveBeenCalled();
@@ -146,5 +148,19 @@ describe('PhotoCard Component', () => {
     rerender(<PhotoCard photo={mockPhoto1} isImmediate={false} loading="lazy" fetchPriority="auto" />);
     expect(img).toHaveAttribute('src', mockPhoto1.download_url);
     expect(observeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles HTMLImageElement.decode safely during image load', async () => {
+    render(<PhotoCard photo={mockPhoto1} isImmediate={true} />);
+    const img = screen.getByAltText('Photo by Tina Atmosphere');
+
+    // Mock HTMLImageElement.prototype.decode
+    img.decode = vi.fn().mockResolvedValue(undefined);
+
+    await act(async () => {
+      fireEvent.load(img);
+    });
+
+    expect(img.decode).toHaveBeenCalled();
   });
 });

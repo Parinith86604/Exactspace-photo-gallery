@@ -93,8 +93,6 @@ body {
   gap: 16px;
   background-color: transparent;
   transition: transform var(--transition-fast);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 160px;
 }
 
 /* Thumbnail Container - Aligned on the LEFT */
