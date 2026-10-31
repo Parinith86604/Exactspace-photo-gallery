@@ -60,4 +60,4 @@ https://picsum.photos/v2/list?page=1
 
 https://github.com/Parinith86604/Exactspace-photo-gallery
 
-Developed by **P Shivaraj**.
+Developed by **Parinith N**.
