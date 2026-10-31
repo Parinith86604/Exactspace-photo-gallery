@@ -9,7 +9,7 @@ The application fetches photographs from the Picsum Photos API and displays them
 ## Features
 
 - Picsum Photos API integration
-- Single-column responsive photo gallery
+- Responsive single-column photo gallery
 - Author information and independent like counters
 - Infinite scrolling using IntersectionObserver
 - Duplicate prevention
@@ -32,7 +32,7 @@ Clone the repository:
 
     git clone https://github.com/Parinith86604/Exactspace-photo-gallery.git
 
-Open the project folder:
+Navigate to the project:
 
     cd Exactspace-photo-gallery
 
@@ -52,10 +52,6 @@ Start the development server:
 
     npm run build
 
-Preview:
-
-    npm run preview
-
 ## API
 
 https://picsum.photos/v2/list?page=1
@@ -64,4 +60,4 @@ https://picsum.photos/v2/list?page=1
 
 https://github.com/Parinith86604/Exactspace-photo-gallery
 
-Developed by Parinith N.
+Developed by **P Shivaraj**.
